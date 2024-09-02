@@ -19,8 +19,9 @@ func StartBroadcast(pid int, serverAddr string, peers map[string]int, numNodes i
 	initBroadcastState(numNodes, wg)
 
 	networking.StartHost(pid, serverAddr, peers, handleIncomingMessages, wg)
-	time.Sleep(10 * time.Second) // Give time to all peers to start their hosts
+	time.Sleep(7 * time.Second) // Give time to all peers to start their hosts
 	networking.EstablishConnections()
+	time.Sleep(3 * time.Second) // Give time to all peers to establish connections
 
 	if pid == BroadcastState.GetLeader() {
 		randomMsg := helpers.RandomMessage(10)

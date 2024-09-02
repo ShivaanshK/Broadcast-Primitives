@@ -11,7 +11,7 @@ import (
 
 func main() {
 	configPath := flag.String("config_path", "./config.json", "Path to config file")
-	broadcastPrimitive := flag.Int("type", 0, "Process ID")
+	broadcastPrimitive := flag.Int("type", 0, "Broadcast primitve to use")
 	pid := flag.Int("pid", 0, "Process ID")
 	flag.Parse()
 
