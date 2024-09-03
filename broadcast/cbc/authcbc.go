@@ -46,18 +46,22 @@ func initBroadcastState(numNodes int, wg *sync.WaitGroup) {
 func consistentBroadcast(message string) {
 	msg := types.NewUnsignedSendMessage(message)
 	BroadcastState.OutgoingMessages <- msg
+	// Leaders echo is implicit on broadcasting a SEND
+	BroadcastState.RecordEcho(message, networking.NodeCtx.Pid)
 }
 
 func receivedSend(message string, pid int) {
 	// Leaders echo is implicit on broadcasting a SEND
-	echoesReceived := BroadcastState.RecordEcho(message, pid)
+	BroadcastState.RecordEcho(message, pid)
+	// Broadcast an echo
+	echo := types.NewUnsignedEchoMessage(message)
+	BroadcastState.OutgoingMessages <- echo
+	// Record your own echo too
+	echoesReceived := BroadcastState.RecordEcho(message, networking.NodeCtx.Pid)
 	// Assuming FIFO channels but doesnt mean others' echoes don't reach this node before leader's send
 	if echoesReceived >= BroadcastState.QuoromSize {
 		deliverMessage(message)
 	}
-	// Broadcast an echo
-	echo := types.NewUnsignedEchoMessage(message)
-	BroadcastState.OutgoingMessages <- echo
 }
 
 func receivedEcho(message string, pid int) {
