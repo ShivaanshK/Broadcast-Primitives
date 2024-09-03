@@ -156,10 +156,16 @@ func RandomMessage(length int) string {
 	return string(b)
 }
 
-func CalculateQuoromSize(numNodes int) (size int) {
+func CalculateByzantineQuoromSize(numNodes int) (size int) {
 	// n = 3f + 1 : solve for f
 	faultTolerance := (numNodes - 1) / 3
 	// quorom size is 2f + 1
 	size = (2 * faultTolerance) + 1
 	return
+}
+
+func CalculateSingleHonestQuoromSize(numNodes int) (size int) {
+	// n = 3f + 1 : solve for f
+	faultTolerance := (numNodes - 1) / 3
+	return faultTolerance + 1
 }

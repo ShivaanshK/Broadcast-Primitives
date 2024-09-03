@@ -6,6 +6,8 @@ import (
 	"broadcast-primitives/types"
 	"io"
 	"log"
+	"math/rand/v2"
+	"os"
 	"sync"
 	"time"
 
@@ -15,7 +17,7 @@ import (
 var BroadcastState types.AuthBroadcastState
 var once sync.Once
 
-func StartBroadcast(pid int, serverAddr string, peers map[string]int, numNodes int, wg *sync.WaitGroup) {
+func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, numNodes int, wg *sync.WaitGroup) {
 	initBroadcastState(numNodes, wg)
 
 	networking.StartHost(pid, serverAddr, peers, handleIncomingMessages, wg)
@@ -23,9 +25,18 @@ func StartBroadcast(pid int, serverAddr string, peers map[string]int, numNodes i
 	networking.EstablishConnections()
 	time.Sleep(3 * time.Second) // Give time to all peers to establish connections
 
-	if pid == BroadcastState.GetLeader() {
-		randomMsg := helpers.RandomMessage(10)
-		consistentBroadcast(randomMsg)
+	rand.New(rand.NewPCG(uint64(os.Getpid()), uint64(pid))) // Seed the random number generator
+
+	for {
+		// Generate a random number between 0 and numNodes-1
+		if rand.IntN(numNodes) == 0 {
+			randomMsg := helpers.RandomMessage(10)
+			consistentBroadcast(randomMsg)
+		}
+
+		// Sleep for a random duration between 1 and 5 seconds
+		sleepDuration := time.Duration(rand.IntN(5)+1) * time.Second
+		time.Sleep(sleepDuration)
 	}
 }
 
@@ -34,9 +45,8 @@ func initBroadcastState(numNodes int, wg *sync.WaitGroup) {
 		BroadcastState = types.AuthBroadcastState{
 			OutgoingMessages: make(chan *types.UnsignedMessage),
 			NumNodes:         numNodes,
-			Leader:           0,
-			EchoCount:        make(map[string][]bool),
-			QuoromSize:       helpers.CalculateQuoromSize(numNodes),
+			MessageStates:    make(map[string]*types.MessageState),
+			QuoromSize:       helpers.CalculateByzantineQuoromSize(numNodes),
 		}
 		wg.Add(1)
 		go networking.HandleOutgoingUnsignedMessage(BroadcastState.OutgoingMessages, wg)
@@ -51,29 +61,38 @@ func consistentBroadcast(message string) {
 }
 
 func receivedSend(message string, pid int) {
-	// Leaders echo is implicit on broadcasting a SEND
-	BroadcastState.RecordEcho(message, pid)
+	// If not delivered
+	if !BroadcastState.IsDelivered(message) {
+		// Leaders echo is implicit on broadcasting a SEND
+		BroadcastState.RecordEcho(message, pid)
+		// Record your own echo too
+		echoesReceived := BroadcastState.RecordEcho(message, networking.NodeCtx.Pid)
+		// Assuming FIFO channels but doesnt mean others' echoes don't reach this node before leader's send
+		if echoesReceived >= BroadcastState.QuoromSize {
+			deliverMessage(message)
+		}
+	}
 	// Broadcast an echo
 	echo := types.NewUnsignedEchoMessage(message)
 	BroadcastState.OutgoingMessages <- echo
-	// Record your own echo too
-	echoesReceived := BroadcastState.RecordEcho(message, networking.NodeCtx.Pid)
-	// Assuming FIFO channels but doesnt mean others' echoes don't reach this node before leader's send
-	if echoesReceived >= BroadcastState.QuoromSize {
-		deliverMessage(message)
-	}
 }
 
 func receivedEcho(message string, pid int) {
-	echoesReceived := BroadcastState.RecordEcho(message, pid)
-	if echoesReceived >= BroadcastState.QuoromSize {
-		// Deliver upon quorom
-		deliverMessage(message)
+	// If not delivered
+	if !BroadcastState.IsDelivered(message) {
+		// Record echo
+		echoesReceived := BroadcastState.RecordEcho(message, pid)
+		if echoesReceived >= BroadcastState.QuoromSize {
+			// Deliver upon quorom
+			deliverMessage(message)
+		}
 	}
 }
 
 func deliverMessage(message string) {
+	BroadcastState.Deliver(message)
 	log.Printf("Delivered Message: %v", message)
+	BroadcastState.PrintMessageStates()
 }
 
 func handleIncomingMessages(stream network.Stream) {
@@ -104,9 +123,7 @@ func handleIncomingMessages(stream network.Stream) {
 				log.Printf("Error unmarshaling message: %v", err)
 			} else {
 				log.Printf("Received message of type %v from process %v", unmarshaledMessage.Type, peerPid)
-				currLeader := BroadcastState.GetLeader()
-				if unmarshaledMessage.Type == types.SEND && peerPid == currLeader {
-					// Received Send from leader
+				if unmarshaledMessage.Type == types.SEND {
 					receivedSend(unmarshaledMessage.Message, peerPid)
 				} else if unmarshaledMessage.Type == types.ECHO {
 					receivedEcho(unmarshaledMessage.Message, peerPid)

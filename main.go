@@ -27,7 +27,7 @@ func main() {
 	// Start broadcast depending on flag
 	switch broadcastPrimitiveToUse {
 	case types.AUTH_CBC:
-		authcbc.StartBroadcast(*pid, serverAddr, peers, numNodes, &wg)
+		authcbc.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
 	}
 
 	wg.Wait()
