@@ -29,7 +29,7 @@ The protocol involves a sender distributing the request to all parties, expectin
 
 #### Protocol Description
 
-**Note**: In all `upon` clauses below that involve receiving a message, only the first message from each party is considered. Also, this algorithm assumes that `n > 3f.`
+**Note**: In all `upon` clauses below that involve receiving a message, only the first message from each party is considered. This algorithm assumes that `n > 3f.`
 
 1. **upon c-broadcast(m):** (only for the sender \(P_s\))  
    - The sender \(P_s\) sends the message `(SEND, m)` to all other nodes.
@@ -74,7 +74,7 @@ After receiving the request from the sender, every party echoes the request to a
 
 #### Protocol Description
 
-**Note**: In all `upon` clauses that involve receiving a message, only the first message from each party is considered. Also, this algorithm assumes that `n > 3f.`
+**Note**: In all `upon` clauses that involve receiving a message, only the first message from each party is considered. This algorithm assumes that `n > 3f.`
 
 1. **upon r-broadcast(m):** (only for the sender \(P_s\))  
    - The sender \(P_s\) sends the message `(SEND, m)` to all other nodes.
