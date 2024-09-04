@@ -1,4 +1,4 @@
-package authbc
+package authenticated
 
 import (
 	"encoding/json"

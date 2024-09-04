@@ -143,6 +143,16 @@ func (state *BrachaBroadcastState) deliver(message string) {
 	}
 }
 
+func (state *BrachaBroadcastState) sentReady(message string, pid int) bool {
+	state.Lock()
+	defer state.Unlock()
+	_, exists := state.MessageStates[message]
+	if exists {
+		return state.MessageStates[message].Readys[pid]
+	}
+	return false
+}
+
 func (state *BrachaBroadcastState) printMessageStates() {
 	state.Lock()
 	defer state.Unlock()

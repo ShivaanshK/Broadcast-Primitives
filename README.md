@@ -17,7 +17,7 @@
 
 ### Authenticated Broadcast
 
-**Package:** `authbc`
+**Package:** `authenticated`
 
 Authenticated broadcast implements **consistent broadcast** with a quadratic number of messages and a latency of two message exchanges.
 
@@ -62,7 +62,7 @@ The protocol involves a sender distributing the request to all parties, expectin
 
 ### Bracha Broadcast
 
-**Package:** `brachabc`
+**Package:** `bracha`
 
 Bracha broadcast is a classical implementation of reliable broadcast that uses two rounds of message exchanges among all parties. The protocol is resilient to Byzantine failures and ensures that all correct parties r-deliver the same message. The process includes sending, echoing, and confirming readiness before delivering the message.
 

@@ -1,4 +1,4 @@
-package authbc
+package authenticated
 
 import (
 	"broadcast-primitives/helpers"
@@ -60,31 +60,26 @@ func consistentBroadcast(message string) {
 }
 
 func receivedSend(message string, pid int) {
-	// If not delivered
-	if !BroadcastState.isDelivered(message) {
-		// Leaders echo is implicit on broadcasting a SEND
-		BroadcastState.recordEcho(message, pid)
-		// Record your own echo too
-		echoesReceived := BroadcastState.recordEcho(message, networking.NodeCtx.Pid)
-		// Assuming FIFO channels but doesnt mean others' echoes don't reach this node before leader's send
-		if echoesReceived >= BroadcastState.QuoromSize {
-			deliverMessage(message)
-		}
-	}
+	// Leaders echo is implicit on broadcasting a SEND
+	BroadcastState.recordEcho(message, pid)
+	// Record your own echo too
+	echoesReceived := BroadcastState.recordEcho(message, networking.NodeCtx.Pid)
 	// Broadcast an echo
 	echo := newUnsignedEchoMessage(message)
 	BroadcastState.OutgoingMessages <- echo
+	// Assuming FIFO channels but doesnt mean others' echoes don't reach this node before leader's send
+	if echoesReceived >= BroadcastState.QuoromSize && !BroadcastState.isDelivered(message) {
+		deliverMessage(message)
+	}
 }
 
 func receivedEcho(message string, pid int) {
-	// If not delivered
-	if !BroadcastState.isDelivered(message) {
-		// Record echo
-		echoesReceived := BroadcastState.recordEcho(message, pid)
-		if echoesReceived >= BroadcastState.QuoromSize {
-			// Deliver upon quorom
-			deliverMessage(message)
-		}
+	// Record echo
+	echoesReceived := BroadcastState.recordEcho(message, pid)
+	// If echo quorom exists and haven't delivered, deliver the message
+	if echoesReceived >= BroadcastState.QuoromSize && !BroadcastState.isDelivered(message) {
+		// Deliver upon quorom
+		deliverMessage(message)
 	}
 }
 
