@@ -24,7 +24,7 @@ func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, 
 	networking.EstablishConnections()
 	time.Sleep(3 * time.Second) // Give time to all peers to establish connections
 
-	rand.New(rand.NewPCG(uint64(os.Getpid()), uint64(pid))) // Seed the random number generator
+	rand.New(rand.NewPCG(uint64(os.Getpid()), uint64(time.Now().Unix()))) // Seed the random number generator
 
 	for {
 		// Generate a random number between 0 and numNodes-1
