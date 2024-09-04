@@ -1,12 +1,15 @@
 package main
 
 import (
-	authcbc "broadcast-primitives/broadcast/cbc"
+	authcbc "broadcast-primitives/broadcast/cbc/authcbc"
 	"broadcast-primitives/helpers"
-	"broadcast-primitives/types"
 	"flag"
 	"log"
 	"sync"
+)
+
+const (
+	AUTH_CBC int = iota
 )
 
 func main() {
@@ -16,7 +19,6 @@ func main() {
 	flag.Parse()
 
 	// Get broadcast primitive to use and parse config file
-	broadcastPrimitiveToUse := types.BroadcastPrimitive(*broadcastPrimitive)
 	serverAddr, peers, numNodes, err := helpers.GetHostAndMapping(*configPath, *pid)
 	if err != nil {
 		log.Panicf("Error parsing config file: %v", err)
@@ -25,8 +27,8 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Start broadcast depending on flag
-	switch broadcastPrimitiveToUse {
-	case types.AUTH_CBC:
+	switch *broadcastPrimitive {
+	case AUTH_CBC:
 		authcbc.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
 	}
 

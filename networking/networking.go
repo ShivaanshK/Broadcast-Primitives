@@ -2,9 +2,7 @@ package networking
 
 import (
 	"broadcast-primitives/helpers"
-	"broadcast-primitives/types"
 	"context"
-	"encoding/json"
 	"log"
 	"os"
 	"os/signal"
@@ -19,15 +17,24 @@ import (
 
 const PROTCOL_ID = "/broadcast/1.0.0"
 
+// NodeCtx holds the host address, peer addresses, and connections.
+type NodeContext struct {
+	Pid       int
+	PeersPids map[string]int
+	Host      host.Host
+	Streams   []network.Stream
+	sync.Mutex
+}
+
 // NodeCtx is the singleton instance of NodeCtx.
-var NodeCtx *types.NodeCtx
+var NodeCtx *NodeContext
 
 // once is used to ensure that initCtx is only called once.
 var once sync.Once
 
 func initCtx(host host.Host, pid int, peers map[string]int) {
 	once.Do(func() {
-		NodeCtx = &types.NodeCtx{
+		NodeCtx = &NodeContext{
 			Pid:       pid,
 			PeersPids: peers,
 			Host:      host,
@@ -95,23 +102,36 @@ func EstablishConnections() {
 	}
 }
 
-func HandleOutgoingUnsignedMessage(outgoingMessages chan *types.UnsignedMessage, wg *sync.WaitGroup) {
-	defer wg.Done()
+func BroadcastMessage(message []byte) {
+	NodeCtx.Lock()
+	defer NodeCtx.Unlock()
 
-	for {
-		msg := <-outgoingMessages
-		marshaledMsg, err := MarshalUnsignedMessage(msg)
+	for _, stream := range NodeCtx.Streams {
+		n, err := stream.Write(message)
 		if err != nil {
-			log.Panicf("Failed to marshal message: %v", err)
+			log.Panicf("Failed to write operation to stream: %v", err)
+		} else if n != len(message) {
+			log.Panicf("Failed to write entire operation to stream: %v", err)
+		} else {
+			log.Printf("Sent message to %v", stream.Conn().RemoteMultiaddr())
 		}
-		for _, stream := range NodeCtx.Streams {
-			n, err := stream.Write(marshaledMsg)
+	}
+}
+
+func UnicastMessage(message []byte, peerAddr string) {
+	NodeCtx.Lock()
+	defer NodeCtx.Unlock()
+
+	for _, stream := range NodeCtx.Streams {
+		fullMultiAddr := stream.Conn().RemoteMultiaddr().String() + "/p2p/" + stream.Conn().RemotePeer().String()
+		if fullMultiAddr == peerAddr {
+			n, err := stream.Write(message)
 			if err != nil {
 				log.Panicf("Failed to write operation to stream: %v", err)
-			} else if n != len(marshaledMsg) {
+			} else if n != len(message) {
 				log.Panicf("Failed to write entire operation to stream: %v", err)
 			} else {
-				log.Printf("Sent message of type %v to %v", msg.Type, stream.Conn().RemoteMultiaddr())
+				log.Printf("Sent message to %v", stream.Conn().RemoteMultiaddr())
 			}
 		}
 	}
@@ -128,19 +148,6 @@ func RemoveStream(stream network.Stream) {
 			break
 		}
 	}
-}
-
-func MarshalUnsignedMessage(msg *types.UnsignedMessage) ([]byte, error) {
-	return json.Marshal(msg)
-}
-
-func UnmarshalUnsignedMessage(data []byte) (*types.UnsignedMessage, error) {
-	var msg types.UnsignedMessage
-	err := json.Unmarshal(data, &msg)
-	if err != nil {
-		return nil, err
-	}
-	return &msg, nil
 }
 
 func waitForShutdownSignal(wg *sync.WaitGroup) {

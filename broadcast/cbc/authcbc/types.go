@@ -1,25 +1,16 @@
-package types
+package authcbc
 
 import (
+	"encoding/json"
 	"log"
 	"sync"
-
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
 )
-
-type BroadcastPrimitive int
 
 type MessageType int
 
 const (
-	AUTH_CBC BroadcastPrimitive = iota
-)
-
-const (
 	SEND MessageType = iota
 	ECHO
-	FINAL
 )
 
 type UnsignedMessage struct {
@@ -41,15 +32,6 @@ func NewUnsignedEchoMessage(message string) *UnsignedMessage {
 		Type:    ECHO,
 		Message: message,
 	}
-}
-
-// NodeCtx holds the host address, peer addresses, and connections.
-type NodeCtx struct {
-	Pid       int
-	PeersPids map[string]int
-	Host      host.Host
-	Streams   []network.Stream
-	sync.Mutex
 }
 
 type AuthBroadcastState struct {
@@ -127,4 +109,17 @@ func (state *AuthBroadcastState) getEchoCount(message string) (count int) {
 		}
 	}
 	return
+}
+
+func marshalUnsignedMessage(msg *UnsignedMessage) ([]byte, error) {
+	return json.Marshal(msg)
+}
+
+func unmarshalUnsignedMessage(data []byte) (*UnsignedMessage, error) {
+	var msg UnsignedMessage
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
 }

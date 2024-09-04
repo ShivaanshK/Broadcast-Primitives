@@ -3,7 +3,6 @@ package authcbc
 import (
 	"broadcast-primitives/helpers"
 	"broadcast-primitives/networking"
-	"broadcast-primitives/types"
 	"io"
 	"log"
 	"math/rand/v2"
@@ -14,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 )
 
-var BroadcastState types.AuthBroadcastState
+var BroadcastState AuthBroadcastState
 var once sync.Once
 
 func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, numNodes int, wg *sync.WaitGroup) {
@@ -42,19 +41,19 @@ func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, 
 
 func initBroadcastState(numNodes int, wg *sync.WaitGroup) {
 	once.Do(func() {
-		BroadcastState = types.AuthBroadcastState{
-			OutgoingMessages: make(chan *types.UnsignedMessage),
+		BroadcastState = AuthBroadcastState{
+			OutgoingMessages: make(chan *UnsignedMessage),
 			NumNodes:         numNodes,
-			MessageStates:    make(map[string]*types.MessageState),
+			MessageStates:    make(map[string]*MessageState),
 			QuoromSize:       helpers.CalculateByzantineQuoromSize(numNodes),
 		}
 		wg.Add(1)
-		go networking.HandleOutgoingUnsignedMessage(BroadcastState.OutgoingMessages, wg)
+		go handleOutgoingUnsignedMessage(wg)
 	})
 }
 
 func consistentBroadcast(message string) {
-	msg := types.NewUnsignedSendMessage(message)
+	msg := NewUnsignedSendMessage(message)
 	BroadcastState.OutgoingMessages <- msg
 	// Leaders echo is implicit on broadcasting a SEND
 	BroadcastState.RecordEcho(message, networking.NodeCtx.Pid)
@@ -73,7 +72,7 @@ func receivedSend(message string, pid int) {
 		}
 	}
 	// Broadcast an echo
-	echo := types.NewUnsignedEchoMessage(message)
+	echo := NewUnsignedEchoMessage(message)
 	BroadcastState.OutgoingMessages <- echo
 }
 
@@ -118,17 +117,30 @@ func handleIncomingMessages(stream network.Stream) {
 
 		if n > 0 {
 			msg := buffer[:n]
-			unmarshaledMessage, err := networking.UnmarshalUnsignedMessage(msg)
+			unmarshaledMessage, err := unmarshalUnsignedMessage(msg)
 			if err != nil {
 				log.Printf("Error unmarshaling message: %v", err)
 			} else {
 				log.Printf("Received message of type %v from process %v", unmarshaledMessage.Type, peerPid)
-				if unmarshaledMessage.Type == types.SEND {
+				if unmarshaledMessage.Type == SEND {
 					receivedSend(unmarshaledMessage.Message, peerPid)
-				} else if unmarshaledMessage.Type == types.ECHO {
+				} else if unmarshaledMessage.Type == ECHO {
 					receivedEcho(unmarshaledMessage.Message, peerPid)
 				}
 			}
 		}
+	}
+}
+
+func handleOutgoingUnsignedMessage(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		msg := <-BroadcastState.OutgoingMessages
+		marshaledMsg, err := marshalUnsignedMessage(msg)
+		if err != nil {
+			log.Panicf("Failed to marshal message: %v", err)
+		}
+		networking.BroadcastMessage(marshaledMsg)
 	}
 }
