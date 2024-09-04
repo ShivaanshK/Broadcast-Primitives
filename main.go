@@ -1,7 +1,7 @@
 package main
 
 import (
-	authcbc "broadcast-primitives/broadcast/cbc/authcbc"
+	authbc "broadcast-primitives/broadcast/cbc/authbc"
 	"broadcast-primitives/helpers"
 	"flag"
 	"log"
@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	AUTH_CBC int = iota
+	AUTHENTICATED_BROADCAST int = iota
+	BRACHA_BROADCAST
 )
 
 func main() {
@@ -28,8 +29,8 @@ func main() {
 
 	// Start broadcast depending on flag
 	switch *broadcastPrimitive {
-	case AUTH_CBC:
-		authcbc.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
+	case AUTHENTICATED_BROADCAST:
+		authbc.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
 	}
 
 	wg.Wait()

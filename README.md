@@ -1,7 +1,7 @@
 # Implementation of Various Byzantine Broadcast Protocols
 
 ## Authenticated Broadcast
-``` Package: authcbc ```
+``` Package: authbc ```
 
 Authenticated broadcast implements consistent broadcast with a quadratic number of messages and a latency of two message exchanges.
 

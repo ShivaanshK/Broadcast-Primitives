@@ -1,4 +1,4 @@
-package authcbc
+package authbc
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ type UnsignedMessage struct {
 }
 
 // NewSendMessagereturns a new SendMessage with Type set to SEND
-func NewUnsignedSendMessage(message string) *UnsignedMessage {
+func newUnsignedSendMessage(message string) *UnsignedMessage {
 	return &UnsignedMessage{
 		Type:    SEND,
 		Message: message,
@@ -27,7 +27,7 @@ func NewUnsignedSendMessage(message string) *UnsignedMessage {
 }
 
 // NewEchoMessage returns a new EchoMessage with Type set to ECHO
-func NewUnsignedEchoMessage(message string) *UnsignedMessage {
+func newUnsignedEchoMessage(message string) *UnsignedMessage {
 	return &UnsignedMessage{
 		Type:    ECHO,
 		Message: message,
@@ -48,7 +48,7 @@ type MessageState struct {
 }
 
 // RecordEcho records the echo for a process on a message
-func (state *AuthBroadcastState) RecordEcho(message string, pid int) int {
+func (state *AuthBroadcastState) recordEcho(message string, pid int) int {
 	state.Lock()
 	defer state.Unlock()
 	_, exists := state.MessageStates[message]
@@ -65,7 +65,7 @@ func (state *AuthBroadcastState) RecordEcho(message string, pid int) int {
 	return state.getEchoCount(message)
 }
 
-func (state *AuthBroadcastState) IsDelivered(message string) bool {
+func (state *AuthBroadcastState) isDelivered(message string) bool {
 	state.Lock()
 	defer state.Unlock()
 	msgState, exists := state.MessageStates[message]
@@ -75,7 +75,7 @@ func (state *AuthBroadcastState) IsDelivered(message string) bool {
 	return false
 }
 
-func (state *AuthBroadcastState) Deliver(message string) {
+func (state *AuthBroadcastState) deliver(message string) {
 	state.Lock()
 	defer state.Unlock()
 	_, exists := state.MessageStates[message]
@@ -84,7 +84,7 @@ func (state *AuthBroadcastState) Deliver(message string) {
 	}
 }
 
-func (state *AuthBroadcastState) PrintMessageStates() {
+func (state *AuthBroadcastState) printMessageStates() {
 	state.Lock()
 	defer state.Unlock()
 
