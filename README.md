@@ -1,5 +1,7 @@
 # Implementation of Various Byzantine Broadcast Primitives
 
+---
+
 ## Consistent Broadcast (CBC)
 
 ### Properties
