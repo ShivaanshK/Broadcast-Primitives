@@ -107,7 +107,7 @@ func GetKey(pid int) (crypto.PrivKey, error) {
 
 // generatePeerKeyFilePath creates a file path using the pid.
 func generatePeerKeyFilePath(pid int) string {
-	return fmt.Sprintf("peer%d.key", pid)
+	return fmt.Sprintf("networking_auth_keys/peer%d.key", pid)
 }
 
 // readPrivateKeyFromFile reads a private key from a file and returns it as a crypto.PrivKey.

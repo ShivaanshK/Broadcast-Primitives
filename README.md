@@ -1,5 +1,25 @@
 # Implementation of Various Byzantine Broadcast Primitives
 
+## How to run a simulation
+
+```bash
+git clone git@github.com:ShivaanshK/Lamport-SMR.git
+cd Lamport-SMR
+```
+```bash
+# In the first shell
+go run main.go -pid=0 -type={BROADCAST_TYPE}
+# In the second shell
+go run main.go -pid=1 -type={BROADCAST_TYPE}
+# In the third shell
+go run main.go -pid=2 -type={BROADCAST_TYPE}
+# In the fourth shell
+go run main.go -pid=3 -type={BROADCAST_TYPE}
+```
+
+```BROADCAST_TYPE``` is defined as an enumeration:
+```AUTHENTICATED_BROADCAST``` = 0
+```BRACHA_BROADCAST``` = 1
 ---
 
 ## Consistent Broadcast (CBC)
@@ -92,3 +112,4 @@ After receiving the request from the sender, every party echoes the request to a
 
 5. **upon receiving `2f + 1` messages `(READY, m)`:**  
    - The party r-delivers `m`.
+
