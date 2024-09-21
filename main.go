@@ -11,6 +11,7 @@ import (
 
 const (
 	AUTHENTICATED_BROADCAST int = iota
+	ECHO_BROADCAST
 	BRACHA_BROADCAST
 )
 
@@ -32,6 +33,8 @@ func main() {
 	switch *broadcastPrimitive {
 	case AUTHENTICATED_BROADCAST:
 		authenticated.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
+	case ECHO_BROADCAST:
+
 	case BRACHA_BROADCAST:
 		bracha.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
 	}

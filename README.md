@@ -19,7 +19,8 @@ go run main.go -pid=3 -type={BROADCAST_TYPE}
 
 The ```BROADCAST_TYPE``` enumeration is defined as follows:
 1. ```AUTHENTICATED_BROADCAST``` = 0
-2. ```BRACHA_BROADCAST``` = 1
+2. ```ECHO_BROADCAST``` = 1
+3. ```BRACHA_BROADCAST``` = 2
 
 ## Consistent Broadcast (CBC)
 
