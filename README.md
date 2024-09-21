@@ -1,6 +1,6 @@
 # Implementation of Various Byzantine Broadcast Primitives
 
-## How to run a simulation
+## Run a Simulation
 
 ```bash
 git clone git@github.com:ShivaanshK/Lamport-SMR.git
@@ -17,10 +17,9 @@ go run main.go -pid=2 -type={BROADCAST_TYPE}
 go run main.go -pid=3 -type={BROADCAST_TYPE}
 ```
 
-```BROADCAST_TYPE``` is defined as an enumeration:
-```AUTHENTICATED_BROADCAST``` = 0
-```BRACHA_BROADCAST``` = 1
----
+The ```BROADCAST_TYPE``` enumeration is defined as follows:
+1. ```AUTHENTICATED_BROADCAST``` = 0
+2. ```BRACHA_BROADCAST``` = 1
 
 ## Consistent Broadcast (CBC)
 
