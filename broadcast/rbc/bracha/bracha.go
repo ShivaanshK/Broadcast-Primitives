@@ -29,12 +29,14 @@ func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, 
 	for {
 		// Generate a random number between 0 and numNodes-1
 		if rand.IntN(numNodes) == 0 {
+			log.Print("Got picked to broadcast\n")
 			randomMsg := helpers.RandomMessage(10)
 			reliableBroadcast(randomMsg)
 		}
 
 		// Sleep for a random duration between 1 and 5 seconds
 		sleepDuration := time.Duration(rand.IntN(5)+1) * time.Second
+		log.Printf("Going to sleep for %v\n", sleepDuration)
 		time.Sleep(sleepDuration)
 	}
 }

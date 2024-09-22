@@ -127,6 +127,7 @@ func (state *EchoBroadcastState) PrintMessageStates() {
 	for message, isDelivered := range state.DeliveredMessages {
 		log.Printf("Message: %s\n", message)
 		log.Printf("Delivered: %v\n", isDelivered)
+		// log.Printf("ECHO Signatures: %v\n", state.EchoesReceived[message])
 		log.Println()
 	}
 }

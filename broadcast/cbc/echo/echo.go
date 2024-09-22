@@ -33,12 +33,14 @@ func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, 
 	for {
 		// Generate a random number between 0 and numNodes-1
 		if rand.IntN(numNodes) == 0 {
+			log.Print("Got picked to broadcast\n")
 			randomMsg := helpers.RandomMessage(10)
 			consistentBroadcast(randomMsg)
 		}
 
 		// Sleep for a random duration between 1 and 5 seconds
 		sleepDuration := time.Duration(rand.IntN(5)+1) * time.Second
+		log.Printf("Going to sleep for %v\n", sleepDuration)
 		time.Sleep(sleepDuration)
 	}
 }
@@ -64,7 +66,7 @@ func consistentBroadcast(message string) {
 	msgToSign := []byte("ECHO" + strconv.Itoa(networking.NodeCtx.Pid) + message)
 	signature, err := BroadcastState.HostPrivateKey.Sign(msgToSign)
 	if err != nil {
-		log.Panicf("Failed to sign my own ECHO for message %v", message)
+		log.Panicf("Failed to sign ECHO for my own message %v", message)
 	}
 	BroadcastState.recordEcho(message, signature, networking.NodeCtx.Pid)
 
@@ -148,7 +150,7 @@ func receivedFinal(message *Message, peerMultiAddr string) {
 func deliverMessage(message string) {
 	BroadcastState.deliver(message)
 	log.Printf("Delivered Message: %v", message)
-	BroadcastState.PrintMessageStates()
+	// BroadcastState.PrintMessageStates()
 }
 
 func handleIncomingMessages(stream network.Stream) {

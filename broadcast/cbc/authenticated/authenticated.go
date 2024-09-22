@@ -3,7 +3,6 @@ package authenticated
 import (
 	"broadcast-primitives/helpers"
 	"broadcast-primitives/networking"
-	"io"
 	"log"
 	"math/rand/v2"
 	"os"
@@ -29,12 +28,14 @@ func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, 
 	for {
 		// Generate a random number between 0 and numNodes-1
 		if rand.IntN(numNodes) == 0 {
+			log.Print("Got picked to broadcast\n")
 			randomMsg := helpers.RandomMessage(10)
 			consistentBroadcast(randomMsg)
 		}
 
 		// Sleep for a random duration between 1 and 5 seconds
 		sleepDuration := time.Duration(rand.IntN(5)+1) * time.Second
+		log.Printf("Going to sleep for %v\n", sleepDuration)
 		time.Sleep(sleepDuration)
 	}
 }
@@ -104,10 +105,10 @@ func handleIncomingMessages(stream network.Stream) {
 	for {
 		n, err := stream.Read(buffer)
 		if err != nil {
-			if err != io.EOF {
-				log.Panicf("Error reading from stream with %v: %v", stream.Conn().RemoteMultiaddr().String(), err)
-			}
-			break
+			// if err != io.EOF {
+			// 	log.Printf("Error reading from stream with %v: %v", stream.Conn().RemoteMultiaddr().String(), err)
+			// }
+			// // break
 		}
 
 		if n > 0 {

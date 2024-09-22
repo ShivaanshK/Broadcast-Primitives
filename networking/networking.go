@@ -143,7 +143,7 @@ func RemoveStream(stream network.Stream) {
 
 	for i, currSteam := range NodeCtx.Streams {
 		if stream.ID() == currSteam.ID() {
-			// log.Printf("Removed stream with ID: %v", stream.ID())
+			log.Printf("Removed stream with ID: %v", stream.Conn().RemoteMultiaddr().String()+"/p2p/"+stream.Conn().RemotePeer().String())
 			NodeCtx.Streams = append(NodeCtx.Streams[:i], NodeCtx.Streams[i+1:]...)
 			break
 		}
