@@ -79,23 +79,23 @@ type EchoBroadcastState struct {
 }
 
 // record echo
-func (state *EchoBroadcastState) recordEcho(message *Message, echoerPid int) int {
+func (state *EchoBroadcastState) recordEcho(message string, sig Signature, echoerPid int) int {
 	state.Lock()
 	defer state.Unlock()
-	_, exists := state.EchoesReceived[message.Message]
+	_, exists := state.EchoesReceived[message]
 
 	if !exists {
-		state.EchoesReceived[message.Message] = make([]Signature, state.NumNodes)
+		state.EchoesReceived[message] = make([]Signature, state.NumNodes)
 	}
 
-	state.EchoesReceived[message.Message][echoerPid] = message.Signatures[0]
+	state.EchoesReceived[message][echoerPid] = sig
 
 	return state.countEchoes(message)
 }
 
 // countEchoes returns the number of non-empty echoes (non-empty signatures) for a given message
-func (state *EchoBroadcastState) countEchoes(message *Message) int {
-	echoes, exists := state.EchoesReceived[message.Message]
+func (state *EchoBroadcastState) countEchoes(message string) int {
+	echoes, exists := state.EchoesReceived[message]
 	if !exists {
 		return 0
 	}

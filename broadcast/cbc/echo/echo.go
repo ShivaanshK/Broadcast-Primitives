@@ -60,16 +60,25 @@ func initBroadcastState(numNodes int, privKey crypto.PrivKey, peerPublicKeys []c
 }
 
 func consistentBroadcast(message string) {
+	// Record your own ECHO for the SEND message. It is implicit
+	msgToSign := []byte("ECHO" + strconv.Itoa(networking.NodeCtx.Pid) + message)
+	signature, err := BroadcastState.HostPrivateKey.Sign(msgToSign)
+	if err != nil {
+		log.Panicf("Failed to sign my own ECHO for message %v", message)
+	}
+	BroadcastState.recordEcho(message, signature, networking.NodeCtx.Pid)
+
+	// Broadcast SEND message
 	msg := newSendMessage(message)
 	outgoingMsg := newOutgoingMessage(msg, "")
 	BroadcastState.OutgoingMessages <- outgoingMsg
 }
 
 func receivedSend(message *Message, peerMultiAddr string) {
-	peerPid := networking.NodeCtx.PeersPids[peerMultiAddr]
+	leaderPid := networking.NodeCtx.PeersPids[peerMultiAddr]
 
 	// Sign an echo message
-	msgToSign := []byte("ECHO" + strconv.Itoa(peerPid) + message.Message)
+	msgToSign := []byte("ECHO" + strconv.Itoa(leaderPid) + message.Message)
 	signature, err := BroadcastState.HostPrivateKey.Sign(msgToSign)
 	if err != nil {
 		log.Panicf("Failed to sign ECHO for message %v", message)
@@ -99,8 +108,8 @@ func receivedEcho(message *Message, peerMultiAddr string) {
 	}
 
 	// Record echo signature for sending in the final
-	numEchoes := BroadcastState.recordEcho(message, peerPid)
-	// Send out final message once quorom reached
+	numEchoes := BroadcastState.recordEcho(message.Message, message.Signatures[0], peerPid)
+	// Broadcast FINAL message once quorom reached
 	if numEchoes == BroadcastState.QuoromSize {
 		echoSigs := BroadcastState.EchoesReceived[message.Message]
 		finalMsg := newFinalMessage(message.Message, echoSigs)
@@ -111,7 +120,29 @@ func receivedEcho(message *Message, peerMultiAddr string) {
 }
 
 func receivedFinal(message *Message, peerMultiAddr string) {
+	leaderPid := networking.NodeCtx.PeersPids[peerMultiAddr]
 
+	validEchoSigs := 0
+	for peerPid, peerSig := range message.Signatures {
+		if len(peerSig) > 0 {
+			dataSigned := []byte("ECHO" + strconv.Itoa(leaderPid) + message.Message)
+			peerPubKey := BroadcastState.PeerPublicKeys[peerPid]
+			valid, err := peerPubKey.Verify(dataSigned, peerSig)
+			if err != nil {
+				log.Panicf("Failed to verify ECHO sig from peer %v on message %v", peerPid, message.Message)
+			}
+			if valid {
+				validEchoSigs++
+			}
+		}
+	}
+
+	if validEchoSigs >= BroadcastState.QuoromSize {
+		// Update echo sigs for DA
+		BroadcastState.EchoesReceived[message.Message] = message.Signatures
+		// Deliver message
+		deliverMessage(message.Message)
+	}
 }
 
 func deliverMessage(message string) {
