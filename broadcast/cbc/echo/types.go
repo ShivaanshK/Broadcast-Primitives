@@ -3,7 +3,6 @@ package echo
 import (
 	"encoding/json"
 	"log"
-	"math/big"
 	"sync"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -17,17 +16,18 @@ const (
 	FINAL
 )
 
-type Signature struct {
-	// Signature fields
-	R big.Int
-	S big.Int
-}
+type Signature []byte
 
 // Message struct handles both unsigned and signed messages
 type Message struct {
 	Type       MessageType
 	Message    string
 	Signatures []Signature // If empty, it indicates an unsigned message
+}
+
+type OutgoingMessage struct {
+	Message   *Message
+	Recipient string // multiaddr to unicast to. If "", will broadcast to every peer
 }
 
 // NewSendMessage returns a new Message with Type set to SEND and no signatures (unsigned)
@@ -39,23 +39,76 @@ func newSendMessage(message string) *Message {
 }
 
 // NewEchoMessage returns a new Message with Type set to ECHO and includes signatures
-func newEchoMessage(message string, signatures []Signature) *Message {
-	return &Message{
+func newEchoMessage(message string, sig Signature) (echo *Message) {
+	echo = &Message{
 		Type:       ECHO,
 		Message:    message,
-		Signatures: signatures,
+		Signatures: make([]Signature, 1),
+	}
+	echo.Signatures[0] = sig
+	return
+}
+
+// NewEchoMessage returns a new Message with Type set to ECHO and includes signatures
+func newFinalMessage(message string, sigs []Signature) *Message {
+	return &Message{
+		Type:       FINAL,
+		Message:    message,
+		Signatures: sigs,
+	}
+}
+
+// NewSendMessage returns a new Message with Type set to SEND and no signatures (unsigned)
+func newOutgoingMessage(message *Message, recipient string) *OutgoingMessage {
+	return &OutgoingMessage{
+		Message:   message,
+		Recipient: recipient,
 	}
 }
 
 // EchoBroadcastState manages the state of the echo broadcast system
 type EchoBroadcastState struct {
-	OutgoingMessages  chan *Message
+	OutgoingMessages  chan *OutgoingMessage
 	NumNodes          int // number of nodes
 	HostPrivateKey    crypto.PrivKey
 	PeerPublicKeys    []crypto.PubKey
+	EchoesReceived    map[string][]Signature
 	DeliveredMessages map[string]bool // message -> bool indicating delivery of message
 	QuoromSize        int             // size of Byzantine Quorum
 	sync.Mutex
+}
+
+// record echo
+func (state *EchoBroadcastState) recordEcho(message *Message, echoerPid int) int {
+	state.Lock()
+	defer state.Unlock()
+	_, exists := state.EchoesReceived[message.Message]
+
+	if !exists {
+		state.EchoesReceived[message.Message] = make([]Signature, state.NumNodes)
+	}
+
+	state.EchoesReceived[message.Message][echoerPid] = message.Signatures[0]
+
+	return state.countEchoes(message)
+}
+
+// countEchoes returns the number of non-empty echoes (non-empty signatures) for a given message
+func (state *EchoBroadcastState) countEchoes(message *Message) int {
+	echoes, exists := state.EchoesReceived[message.Message]
+	if !exists {
+		return 0
+	}
+
+	// Count non-empty echoes (non-empty byte slices)
+	count := 0
+	for _, sig := range echoes {
+		if len(sig) > 0 { // Only count non-empty byte arrays
+			count++
+		}
+	}
+
+	return count
 }
 
 // isDelivered checks if a message has already been delivered
@@ -77,7 +130,7 @@ func (state *EchoBroadcastState) deliver(message string) {
 }
 
 // printMessageStates logs the current state of message deliveries
-func (state *EchoBroadcastState) printMessageStates() {
+func (state *EchoBroadcastState) PrintMessageStates() {
 	state.Lock()
 	defer state.Unlock()
 

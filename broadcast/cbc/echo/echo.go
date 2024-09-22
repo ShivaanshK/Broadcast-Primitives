@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -45,10 +46,11 @@ func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, 
 func initBroadcastState(numNodes int, privKey crypto.PrivKey, peerPublicKeys []crypto.PubKey, wg *sync.WaitGroup) {
 	once.Do(func() {
 		BroadcastState = EchoBroadcastState{
-			OutgoingMessages:  make(chan *Message),
+			OutgoingMessages:  make(chan *OutgoingMessage),
 			NumNodes:          numNodes,
 			HostPrivateKey:    privKey,
 			PeerPublicKeys:    peerPublicKeys,
+			EchoesReceived:    make(map[string][]Signature),
 			DeliveredMessages: make(map[string]bool),
 			QuoromSize:        helpers.CalculateByzantineQuoromSize(numNodes),
 		}
@@ -59,25 +61,63 @@ func initBroadcastState(numNodes int, privKey crypto.PrivKey, peerPublicKeys []c
 
 func consistentBroadcast(message string) {
 	msg := newSendMessage(message)
-	BroadcastState.OutgoingMessages <- msg
+	outgoingMsg := newOutgoingMessage(msg, "")
+	BroadcastState.OutgoingMessages <- outgoingMsg
 }
 
-func receivedSend(message string, pid int) {
+func receivedSend(message *Message, peerMultiAddr string) {
+	peerPid := networking.NodeCtx.PeersPids[peerMultiAddr]
 
+	// Sign an echo message
+	msgToSign := []byte("ECHO" + strconv.Itoa(peerPid) + message.Message)
+	signature, err := BroadcastState.HostPrivateKey.Sign(msgToSign)
+	if err != nil {
+		log.Panicf("Failed to sign ECHO for message %v", message)
+	}
+
+	// Create echo message with signature at first index
+	echo := newEchoMessage(message.Message, signature)
+
+	// Unicast echo back to the leader
+	outgoingEcho := newOutgoingMessage(echo, peerMultiAddr)
+	BroadcastState.OutgoingMessages <- outgoingEcho
 }
 
-func receivedEcho(message string, pid int) {
+func receivedEcho(message *Message, peerMultiAddr string) {
+	peerPid := networking.NodeCtx.PeersPids[peerMultiAddr]
 
+	// Verify the signature of the peer
+	dataSigned := []byte("ECHO" + strconv.Itoa(networking.NodeCtx.Pid) + message.Message)
+	peerSig := message.Signatures[0]
+	peerPubKey := BroadcastState.PeerPublicKeys[peerPid]
+	valid, err := peerPubKey.Verify(dataSigned, peerSig)
+	if err != nil {
+		log.Panicf("Failed to verify ECHO sig from peer %v on message %v", peerPid, message.Message)
+	}
+	if !valid {
+		return
+	}
+
+	// Record echo signature for sending in the final
+	numEchoes := BroadcastState.recordEcho(message, peerPid)
+	// Send out final message once quorom reached
+	if numEchoes == BroadcastState.QuoromSize {
+		echoSigs := BroadcastState.EchoesReceived[message.Message]
+		finalMsg := newFinalMessage(message.Message, echoSigs)
+		outgoingMsg := newOutgoingMessage(finalMsg, "")
+		BroadcastState.OutgoingMessages <- outgoingMsg
+		deliverMessage(finalMsg.Message)
+	}
 }
 
-func receivedFinal(message string, pid int) {
+func receivedFinal(message *Message, peerMultiAddr string) {
 
 }
 
 func deliverMessage(message string) {
 	BroadcastState.deliver(message)
 	log.Printf("Delivered Message: %v", message)
-	BroadcastState.printMessageStates()
+	BroadcastState.PrintMessageStates()
 }
 
 func handleIncomingMessages(stream network.Stream) {
@@ -107,13 +147,13 @@ func handleIncomingMessages(stream network.Stream) {
 			if err != nil {
 				log.Printf("Error unmarshaling message: %v", err)
 			} else {
-				log.Printf("Received message of type %v from process %v", unmarshaledMessage.Type, peerPid)
+				log.Printf("Received message of type %v from process %v", unmarshaledMessage.Type, fullMultiAddr)
 				if unmarshaledMessage.Type == SEND {
-					receivedSend(unmarshaledMessage.Message, peerPid)
+					receivedSend(unmarshaledMessage, fullMultiAddr)
 				} else if unmarshaledMessage.Type == ECHO {
-					receivedEcho(unmarshaledMessage.Message, peerPid)
+					receivedEcho(unmarshaledMessage, fullMultiAddr)
 				} else if unmarshaledMessage.Type == FINAL {
-					receivedFinal(unmarshaledMessage.Message, peerPid)
+					receivedFinal(unmarshaledMessage, fullMultiAddr)
 				}
 			}
 		}
@@ -125,10 +165,14 @@ func handleOutgoingUnsignedMessage(wg *sync.WaitGroup) {
 
 	for {
 		msg := <-BroadcastState.OutgoingMessages
-		marshaledMsg, err := marshalMessage(msg)
+		marshaledMsg, err := marshalMessage(msg.Message)
 		if err != nil {
 			log.Panicf("Failed to marshal unsigned message")
 		}
-		networking.BroadcastMessage(marshaledMsg)
+		if msg.Recipient == "" {
+			networking.BroadcastMessage(marshaledMsg)
+		} else {
+			networking.UnicastMessage(marshaledMsg, msg.Recipient)
+		}
 	}
 }
