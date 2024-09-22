@@ -3,8 +3,8 @@
 ## Run a Simulation
 
 ```bash
-git clone git@github.com:ShivaanshK/Lamport-SMR.git
-cd Lamport-SMR
+git clone git@github.com:ShivaanshK/Broadcast-Primitives.git
+cd Broadcast-Primitives
 ```
 ```bash
 # In the first shell
