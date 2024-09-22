@@ -3,7 +3,6 @@ package echo
 import (
 	"broadcast-primitives/helpers"
 	"broadcast-primitives/networking"
-	"io"
 	"log"
 	"math/rand/v2"
 	"os"
@@ -168,10 +167,10 @@ func handleIncomingMessages(stream network.Stream) {
 	for {
 		n, err := stream.Read(buffer)
 		if err != nil {
-			if err != io.EOF {
-				log.Panicf("Error reading from stream with %v: %v", stream.Conn().RemoteMultiaddr().String(), err)
-			}
-			break
+			// if err != io.EOF {
+			// 	log.Panicf("Error reading from stream with %v: %v", stream.Conn().RemoteMultiaddr().String(), err)
+			// }
+			// break
 		}
 
 		if n > 0 {
