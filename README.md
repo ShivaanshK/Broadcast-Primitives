@@ -62,6 +62,44 @@ The protocol involves a sender distributing the request to all parties, expectin
 3. **upon receiving `2f + 1` messages `(ECHO, m)`:**  
    - The party c-delivers `m` (i.e., considers the message `m` to be consistently delivered).
 
+### Echo Broadcast
+
+**Package:** `echo`
+
+The Echo Broadcast protocol is another implementation of **consistent broadcast**, which leverages digital signatures to achieve lower message and communication complexity compared to the authenticated broadcast protocol. However, this comes at the cost of increased latency and reliance on the sender's liveness. Instead of relying on witnesses to authenticate a request through message exchanges, as in the authenticated broadcast, the echo broadcast uses signed statements disseminated by the sender.
+
+#### Overview
+
+Assume a system with `n` nodes and a tolerance for `f` Byzantine failures.
+
+The echo broadcast protocol involves a sender distributing the request to all parties, expecting a majority of parties (specifically, `2f+1`, where `f` is the number of tolerated failures) to act as witnesses by signing and sending back an `ECHO` message. Once the sender receives enough valid signatures, it sends a `FINAL` message to all parties, which leads to the consistent delivery of the message.
+
+#### Protocol Description
+
+**Note**: In all `upon` clauses below that involve receiving a message, only the first message from each party is considered. This algorithm assumes that `n > 3f`.
+
+1. **upon c-broadcast(m):** (only for the sender \(P_s\))  
+   - The sender \(P_s\) sends the message `(SEND, m)` to all other nodes.
+
+2. **upon receiving a message `(SEND, m)` from \(P_s\):**  
+   - Each party creates a digital signature for the message `m`:
+     ```go 
+     σ := sign_i("ECHO" || s || m)
+     ```
+     - The party sends the message `(ECHO, m, σ)` to the sender \(P_s\).
+
+3. **upon receiving `2f+1` messages `(ECHO, m, σ_j)` with valid signatures σ_j:** (only for the sender \(P_s\))  
+   - The sender verifies the received signatures and, once the threshold is reached, forms a list of all received signatures \(Σ\).
+   - The sender sends the message `(FINAL, m, Σ)` to all other nodes.
+
+4. **upon receiving a message `(FINAL, m, Σ)` from \(P_s\) with `2f+1` valid signatures in Σ:**  
+   - The party c-delivers `m` (i.e., considers the message `m` to be consistently delivered).
+
+#### Summary
+
+The Echo Broadcast protocol achieves consistent broadcast using digital signatures, ensuring that messages are delivered consistently to all correct parties. Its communication complexity is \(O(n)\), and its latency is three message exchanges. Compared to authenticated broadcast, it achieves lower communication complexity but at the cost of 1 more message exchange.
+
+
 ---
 
 ## Reliable Broadcast (RBC)

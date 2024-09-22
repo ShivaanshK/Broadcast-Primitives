@@ -111,17 +111,6 @@ func (state *EchoBroadcastState) countEchoes(message string) int {
 	return count
 }
 
-// isDelivered checks if a message has already been delivered
-func (state *EchoBroadcastState) isDelivered(message string) bool {
-	state.Lock()
-	defer state.Unlock()
-	isDelivered, exists := state.DeliveredMessages[message]
-	if exists {
-		return isDelivered
-	}
-	return false
-}
-
 // deliver marks a message as delivered
 func (state *EchoBroadcastState) deliver(message string) {
 	state.Lock()
