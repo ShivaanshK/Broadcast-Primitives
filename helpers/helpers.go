@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,7 +16,8 @@ import (
 
 // HostsConfig represents the structure of the JSON file.
 type HostsConfig struct {
-	Hosts []string `json:"hosts"`
+	Hosts          []string `json:"hosts"`
+	HostPublicKeys []string `json:"hostPublicKeys"`
 }
 
 // GetHostAndMapping reads the config file, parses the hosts, and returns the host at the given PID,
@@ -62,17 +64,136 @@ func GetHostAndMapping(filePath string, pid int) (string, map[string]int, int, e
 	return selectedHost, hostMapping, len(config.Hosts), nil
 }
 
+// GetPeerPublicKeys reads the config file and returns an array of crypto.PubKey corresponding to each host.
+// If the HostPublicKeys array is entirely empty, it reads all the public keys from the peer key files and updates the config.
+func GetPeerPublicKeys(filePath string) ([]crypto.PubKey, error) {
+	// Open the config file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not open file: %v", err)
+	}
+	defer file.Close()
+
+	// Read the file's content
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("could not read file: %v", err)
+	}
+
+	// Unmarshal the JSON data into a HostsConfig struct
+	var config HostsConfig
+	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse JSON: %v", err)
+	}
+
+	// Ensure the HostPublicKeys array is initialized and has the same length as Hosts
+	if len(config.HostPublicKeys) != len(config.Hosts) {
+		config.HostPublicKeys = make([]string, len(config.Hosts))
+	}
+
+	// Initialize the slice for public keys
+	pubKeys := make([]crypto.PubKey, len(config.Hosts))
+
+	// Check if all public keys are missing or empty
+	allKeysEmpty := true
+	for _, pubKeyStr := range config.HostPublicKeys {
+		if pubKeyStr != "" {
+			allKeysEmpty = false
+			break
+		}
+	}
+
+	// If all keys are empty, read from key files and update config
+	if allKeysEmpty {
+		fmt.Println("HostPublicKeys are empty, generating keys from peer key files.")
+		for i := range config.Hosts {
+			// Read the private key for this host (peer) and extract the public key
+			privKey, err := GetKey(i)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get private key for host %d: %v", i, err)
+			}
+			pubKey := privKey.GetPublic()
+
+			// Marshal the public key and store it in the config
+			pubBytes, err := crypto.MarshalPublicKey(pubKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal public key for host %d: %v", i, err)
+			}
+
+			// Base64 encode the public key and store it in the config
+			config.HostPublicKeys[i] = base64.StdEncoding.EncodeToString(pubBytes)
+
+			pubKeys[i] = pubKey // Add to the pubKeys array
+		}
+
+		// Write the updated public keys to the config file
+		err = writeUpdatedConfig(filePath, config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update config file: %v", err)
+		}
+
+	} else {
+		// If the public keys exist, just unmarshal them and populate the pubKeys array
+		fmt.Println("HostPublicKeys already exist, unmarshaling them.")
+		for i, pubKeyStr := range config.HostPublicKeys {
+			if pubKeyStr != "" {
+				// Verify that the public key is valid Base64 data
+				if _, err := base64.StdEncoding.DecodeString(pubKeyStr); err != nil {
+					fmt.Printf("Invalid Base64 public key for host %d: %s\n", i, pubKeyStr)
+					continue
+				}
+
+				pubKeyBytes, err := base64.StdEncoding.DecodeString(pubKeyStr)
+				if err != nil {
+					return nil, fmt.Errorf("failed to decode Base64 public key for host %d: %v", i, err)
+				}
+
+				// Unmarshal the public key from the decoded bytes
+				pubKey, err := crypto.UnmarshalPublicKey(pubKeyBytes)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal public key for host %d: %v", i, err)
+				}
+
+				pubKeys[i] = pubKey
+			} else {
+
+			}
+		}
+	}
+
+	// Return the array of public keys
+	return pubKeys, nil
+}
+
+// writeUpdatedConfig writes the updated HostsConfig back to the config file.
+func writeUpdatedConfig(filePath string, config HostsConfig) error {
+	// Marshal the updated config back to JSON
+	configData, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated config: %v", err)
+	}
+
+	// Write the updated config to the file
+	err = os.WriteFile(filePath, configData, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to write updated config to file: %v", err)
+	}
+
+	return nil
+}
+
 // GetKey checks if the key file exists for the given pid.
 // If the file doesn't exist, it creates a new keypair, writes it to the file, and returns the private key.
 // If the file exists, it reads the private key from the file and returns it.
 func GetKey(pid int) (crypto.PrivKey, error) {
 	// Create the key file name from the pid
-	keyFilePath := generatePeerKeyFilePath(pid)
+	keyFilePath := GeneratePeerKeyFilePath(pid)
 
 	// Check if the key file already exists
 	if _, err := os.Stat(keyFilePath); err == nil {
 		// File exists, read and return the key
-		priv, err := readPrivateKeyFromFile(keyFilePath)
+		priv, err := ReadPrivateKeyFromFile(keyFilePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read key from file: %v", err)
 		}
@@ -105,13 +226,13 @@ func GetKey(pid int) (crypto.PrivKey, error) {
 	return priv, nil
 }
 
-// generatePeerKeyFilePath creates a file path using the pid.
-func generatePeerKeyFilePath(pid int) string {
-	return fmt.Sprintf("networking_auth_keys/peer%d.key", pid)
+// GeneratePeerKeyFilePath creates a file path using the pid.
+func GeneratePeerKeyFilePath(pid int) string {
+	return fmt.Sprintf("auth_keys/peer%d.key", pid)
 }
 
-// readPrivateKeyFromFile reads a private key from a file and returns it as a crypto.PrivKey.
-func readPrivateKeyFromFile(filePath string) (crypto.PrivKey, error) {
+// ReadPrivateKeyFromFile reads a private key from a file and returns it as a crypto.PrivKey.
+func ReadPrivateKeyFromFile(filePath string) (crypto.PrivKey, error) {
 	// Read the file contents
 	keyData, err := os.ReadFile(filePath)
 	if err != nil {

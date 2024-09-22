@@ -1,11 +1,12 @@
 package echo
 
 import (
-	"crypto"
 	"encoding/json"
 	"log"
 	"math/big"
 	"sync"
+
+	"github.com/libp2p/go-libp2p/core/crypto"
 )
 
 type MessageType int
@@ -50,7 +51,8 @@ func newEchoMessage(message string, signatures []Signature) *Message {
 type EchoBroadcastState struct {
 	OutgoingMessages  chan *Message
 	NumNodes          int // number of nodes
-	NodePublicKeys    []crypto.PublicKey
+	HostPrivateKey    crypto.PrivKey
+	PeerPublicKeys    []crypto.PubKey
 	DeliveredMessages map[string]bool // message -> bool indicating delivery of message
 	QuoromSize        int             // size of Byzantine Quorum
 	sync.Mutex

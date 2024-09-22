@@ -1,8 +1,9 @@
 package main
 
 import (
-	authenticated "broadcast-primitives/broadcast/cbc/authenticated"
-	bracha "broadcast-primitives/broadcast/rbc/bracha"
+	"broadcast-primitives/broadcast/cbc/authenticated"
+	"broadcast-primitives/broadcast/cbc/echo"
+	"broadcast-primitives/broadcast/rbc/bracha"
 	"broadcast-primitives/helpers"
 	"flag"
 	"log"
@@ -34,7 +35,12 @@ func main() {
 	case AUTHENTICATED_BROADCAST:
 		authenticated.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
 	case ECHO_BROADCAST:
-
+		privKey, _ := helpers.ReadPrivateKeyFromFile(helpers.GeneratePeerKeyFilePath(*pid))
+		peerPublicKeys, err := helpers.GetPeerPublicKeys(*configPath)
+		if err != nil {
+			log.Panicf(err.Error())
+		}
+		echo.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, privKey, peerPublicKeys, &wg)
 	case BRACHA_BROADCAST:
 		bracha.StartBroadcastSimulation(*pid, serverAddr, peers, numNodes, &wg)
 	}

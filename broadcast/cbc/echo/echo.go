@@ -10,14 +10,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/network"
 )
 
 var BroadcastState EchoBroadcastState
 var once sync.Once
 
-func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, numNodes int, wg *sync.WaitGroup) {
-	initBroadcastState(numNodes, wg)
+func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, numNodes int, privKey crypto.PrivKey, peerPublicKeys []crypto.PubKey, wg *sync.WaitGroup) {
+	initBroadcastState(numNodes, privKey, peerPublicKeys, wg)
+
+	log.Println(peerPublicKeys)
 
 	networking.StartHost(pid, serverAddr, peers, handleIncomingMessages, wg)
 	time.Sleep(7 * time.Second) // Give time to all peers to start their hosts
@@ -39,11 +42,13 @@ func StartBroadcastSimulation(pid int, serverAddr string, peers map[string]int, 
 	}
 }
 
-func initBroadcastState(numNodes int, wg *sync.WaitGroup) {
+func initBroadcastState(numNodes int, privKey crypto.PrivKey, peerPublicKeys []crypto.PubKey, wg *sync.WaitGroup) {
 	once.Do(func() {
 		BroadcastState = EchoBroadcastState{
 			OutgoingMessages:  make(chan *Message),
 			NumNodes:          numNodes,
+			HostPrivateKey:    privKey,
+			PeerPublicKeys:    peerPublicKeys,
 			DeliveredMessages: make(map[string]bool),
 			QuoromSize:        helpers.CalculateByzantineQuoromSize(numNodes),
 		}

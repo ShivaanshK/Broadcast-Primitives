@@ -1,8 +1,14 @@
 {
-    "hosts": [
-        "/ip4/127.0.0.1/tcp/8080/p2p/12D3KooWJDVE5AzCJnLBU2m3aj1ksZvhS9m5RkEF6dQGzpc7AbGE",
-        "/ip4/127.0.0.1/tcp/8081/p2p/12D3KooWLhHbrsnrfrAdYkKk9MdDJKYf2v2eVgqQPwxyvLSqk7v6",
-        "/ip4/127.0.0.1/tcp/8082/p2p/12D3KooWRmBUBH8zqsQydySs5jR5qCBfrSStKKZdzvsbiK6CvWPB",
-        "/ip4/127.0.0.1/tcp/8083/p2p/12D3KooWKgxaUsHcTxnZi9qXntSyXMVzHkiJ4V8TAfpDdL1XWFyX"
-    ]
+  "hosts": [
+    "/ip4/127.0.0.1/tcp/8080/p2p/12D3KooWJDVE5AzCJnLBU2m3aj1ksZvhS9m5RkEF6dQGzpc7AbGE",
+    "/ip4/127.0.0.1/tcp/8081/p2p/12D3KooWLhHbrsnrfrAdYkKk9MdDJKYf2v2eVgqQPwxyvLSqk7v6",
+    "/ip4/127.0.0.1/tcp/8082/p2p/12D3KooWRmBUBH8zqsQydySs5jR5qCBfrSStKKZdzvsbiK6CvWPB",
+    "/ip4/127.0.0.1/tcp/8083/p2p/12D3KooWKgxaUsHcTxnZi9qXntSyXMVzHkiJ4V8TAfpDdL1XWFyX"
+  ],
+  "hostPublicKeys": [
+    "CAESIHzJ1XXb/zWgsNiR6x9Wtn14e058rwKwgygspg+EEeoj",
+    "CAESIKGgU58u0xClPCGWKt3BelZEt2MQ+C9oxSgy0OAM+dh3",
+    "CAESIOzqJoiB/OuS0BbVfoSCiVRXY93RR9rRpq1FEnVpU5ky",
+    "CAESIJKvISRRcYDI2xmDyxBR/YsrnRYSz1vcP8TmjhduoWXu"
+  ]
 }
